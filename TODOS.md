@@ -10,7 +10,6 @@ Last updated: 2026-11-02
 ## Soon
 - [ ] OG image for link previews in WhatsApp groups (use a shelf photo).
 - [ ] Cloudflare Web Analytics beacon + view counts in admin (moving-sale has the pattern).
-- [ ] Bundle pricing ("3 for X") if buyers ask.
 
 ## Someday
 - [ ] Freshness check right before the wa.me checkout opens.

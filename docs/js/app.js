@@ -245,11 +245,7 @@ function renderCart() {
     return;
   }
 
-  let totalCop = 0;
-  let totalUsd = 0;
   list.innerHTML = lines.map(({ listing: l, qty }) => {
-    totalCop += l.price_cop * qty;
-    totalUsd += l.price_usd * qty;
     return `
       <div class="cart-line">
         <span class="name">${escapeHtml(l.title)}<small>${fmtCop(l.price_cop)}</small></span>
@@ -259,7 +255,17 @@ function renderCart() {
     `;
   }).join("");
 
-  document.getElementById("cartTotal").innerHTML = `<span>Total</span><span>${fmtCop(totalCop)} · ${fmtUsd(Math.round(totalUsd * 100) / 100)}</span>`;
+  const t = bulkTotals(lines);
+  const toNext = t.next ? t.next.min - t.count : 0;
+  document.getElementById("cartTotal").innerHTML = `
+    ${t.tier ? `
+      <div class="cart-row"><span>Subtotal</span><span>${fmtCop(t.subtotal)}</span></div>
+      <div class="cart-row discount"><span>${t.tier.pct}% off ${t.count} books / descuento</span><span>−${fmtCop(t.discount)}</span></div>
+    ` : ""}
+    <div class="cart-row total"><span>Total</span><span>${fmtCop(t.total)} · ${fmtUsd(t.totalUsd)}</span></div>
+    ${t.next ? `<div class="cart-nudge">Add ${toNext} more book${toNext > 1 ? "s" : ""} for ${t.next.pct}% off / Agrega ${toNext} más y te llevas ${t.next.pct}% de descuento</div>` : ""}
+    ${t.tier && t.discount < Math.round((t.subtotal * t.tier.pct) / 100 / 1000) * 1000 ? `<div class="cart-nudge muted">Collectible books aren't discounted. / Los libros de colección no tienen descuento.</div>` : ""}
+  `;
 }
 
 function toggleCart(open) {
@@ -268,14 +274,17 @@ function toggleCart(open) {
 }
 
 function whatsAppCheckoutMessage() {
-  let totalCop = 0;
-  const lines = cartLines().map(({ listing: l, qty }) => {
-    totalCop += l.price_cop * qty;
+  const cart = cartLines();
+  const lines = cart.map(({ listing: l, qty }) => {
     const by = l.author ? ` (${l.author})` : "";
     const n = qty > 1 ? ` x${qty}` : "";
-    return `- ${l.title}${by}${n} — ${Number(l.price_cop).toLocaleString("en-US")} COP`;
+    return `- ${l.title}${by}${n}: ${Number(l.price_cop).toLocaleString("en-US")} COP`;
   });
-  return `Hi Jordan! I'd like these books from your book sale:\n${lines.join("\n")}\n\nTotal: ${fmtCop(totalCop)}\n\nAre they still available?`;
+  const t = bulkTotals(cart);
+  const totals = t.tier
+    ? `Subtotal: ${fmtCop(t.subtotal)}\n${t.tier.pct}% off for ${t.count} books: -${fmtCop(t.discount)}\nTotal: ${fmtCop(t.total)}`
+    : `Total: ${fmtCop(t.total)}`;
+  return `Hi Jordan! I'd like these books from your book sale:\n${lines.join("\n")}\n\n${totals}\n\nAre they still available?`;
 }
 
 function openWhatsAppCheckout() {
@@ -305,6 +314,7 @@ async function loadListings() {
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("priceScale").innerHTML = priceScaleHtml();
+  document.getElementById("bulkTiers").innerHTML = bulkTiersHtml();
   document.getElementById("genreFilter").addEventListener("change", renderListings);
   document.getElementById("sort").addEventListener("change", renderListings);
   document.getElementById("search").addEventListener("input", renderListings);

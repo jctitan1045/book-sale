@@ -780,3 +780,14 @@ button.small { font-size: 0.75rem; padding: 0.25rem 0.6rem; margin-left: 0.5rem;
   .admin-item { grid-template-columns: 1fr; }
   .admin-item > img { width: 100%; height: auto; max-height: 240px; object-fit: contain; }
 }
+
+/* Bulk discount tiers */
+.bulk-tiers { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+#bulkTiers { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.tier-chip { font-size: 0.75rem; padding: 0.3rem 0.65rem; border-radius: 6px; background: #f4ead2; color: #7a5310; }
+.cart-total { flex-direction: column; align-items: stretch; gap: 0.3rem; }
+.cart-row { display: flex; justify-content: space-between; gap: 0.5rem; font-weight: 400; font-size: 0.9rem; }
+.cart-row.discount { color: #1f5b33; font-weight: 600; }
+.cart-row.total { font-weight: 700; font-size: 0.95rem; }
+.cart-nudge { font-size: 0.8rem; font-weight: 600; color: var(--accent); background: #f7efe6; padding: 0.4rem 0.55rem; border-radius: 6px; }
+.cart-nudge.muted { color: var(--muted); background: none; padding: 0; font-weight: 400; }
