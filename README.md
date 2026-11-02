@@ -38,7 +38,7 @@ Hardcover ×1.5, pocket/mass-market ×0.75. Collectible is a floor: the AI also 
 
 ### Bulk discounts
 
-5–9 books 10% off, 10–19 books 15%, 20+ books 25% (`BULK_TIERS` in `docs/js/pricing.js`). Every book counts toward the tier; collectibles are never discounted. The cart shows the discount and a "add N more for X% off" nudge, and the WhatsApp message carries subtotal, discount and total. At 25% off, a 20k Common/Good book lands at ~15k, about what moving-sale books actually sold for.
+5–9 books 10% off, 10–19 books 15%, 20+ books 25% (`BULK_TIERS` in `docs/js/pricing.js`). Applies to every book in the cart, collectibles included. The cart shows the discount and a "add N more for X% off" nudge, and the WhatsApp message carries subtotal, discount and total. At 25% off, a 20k Common/Good book lands at ~15k, about what moving-sale books actually sold for.
 
 The scale is defined twice and must stay in sync: `docs/js/pricing.js` (storefront + admin) and the top of `worker/worker.js` (AI drafts).
 

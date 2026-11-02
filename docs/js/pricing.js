@@ -42,8 +42,8 @@ function scalePrice(rarity, format, condition) {
   return Math.max(5000, Math.round((base * f * c) / 5000) * 5000);
 }
 
-// Bulk discounts by number of books in the cart (highest tier first). Every book counts
-// toward the tier; collectibles are priced individually and never discounted.
+// Bulk discounts by number of books in the cart (highest tier first). Applies to every
+// book, collectibles included.
 const BULK_TIERS = [
   { min: 20, pct: 25 },
   { min: 10, pct: 15 },
@@ -60,15 +60,14 @@ function nextBulkTier(count) {
 
 // lines: [{ listing, qty }]. Discount rounds to the nearest 1,000 COP.
 function bulkTotals(lines) {
-  let count = 0, subtotal = 0, discountable = 0, usd = 0;
+  let count = 0, subtotal = 0, usd = 0;
   for (const { listing: l, qty } of lines) {
     count += qty;
     subtotal += l.price_cop * qty;
     usd += l.price_usd * qty;
-    if (l.rarity !== "collectible") discountable += l.price_cop * qty;
   }
   const tier = bulkTier(count);
-  const discount = tier ? Math.round((discountable * tier.pct) / 100 / 1000) * 1000 : 0;
+  const discount = tier ? Math.round((subtotal * tier.pct) / 100 / 1000) * 1000 : 0;
   const total = subtotal - discount;
   const totalUsd = subtotal ? Math.round(usd * (total / subtotal) * 100) / 100 : 0;
   return { count, subtotal, discount, total, totalUsd, tier, next: nextBulkTier(count) };

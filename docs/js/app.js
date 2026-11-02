@@ -263,9 +263,7 @@ function renderCart() {
       <div class="cart-row discount"><span>${t.tier.pct}% off ${t.count} books / descuento</span><span>−${fmtCop(t.discount)}</span></div>
     ` : ""}
     <div class="cart-row total"><span>Total</span><span>${fmtCop(t.total)} · ${fmtUsd(t.totalUsd)}</span></div>
-    ${t.next ? `<div class="cart-nudge">Add ${toNext} more book${toNext > 1 ? "s" : ""} for ${t.next.pct}% off / Agrega ${toNext} más y te llevas ${t.next.pct}% de descuento</div>` : ""}
-    ${t.tier && t.discount < Math.round((t.subtotal * t.tier.pct) / 100 / 1000) * 1000 ? `<div class="cart-nudge muted">Collectible books aren't discounted. / Los libros de colección no tienen descuento.</div>` : ""}
-  `;
+    ${t.next ? `<div class="cart-nudge">Add ${toNext} more book${toNext > 1 ? "s" : ""} for ${t.next.pct}% off / Agrega ${toNext} más y te llevas ${t.next.pct}% de descuento</div>` : ""}  `;
 }
 
 function toggleCart(open) {
