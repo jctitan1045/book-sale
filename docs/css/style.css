@@ -791,3 +791,6 @@ button.small { font-size: 0.75rem; padding: 0.25rem 0.6rem; margin-left: 0.5rem;
 .cart-row.total { font-weight: 700; font-size: 0.95rem; }
 .cart-nudge { font-size: 0.8rem; font-weight: 600; color: var(--accent); background: #f7efe6; padding: 0.4rem 0.55rem; border-radius: 6px; }
 .cart-nudge.muted { color: var(--muted); background: none; padding: 0; font-weight: 400; }
+.scale-bulk { margin-top: 0.9rem; }
+.scale-bulk-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 0.35rem; }
+.scale-bulk-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }

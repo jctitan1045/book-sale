@@ -102,5 +102,10 @@ function priceScaleHtml() {
       </table>
     </div>
     <p class="scale-foot">Paperback prices in COP. Hardcover ×1.5, pocket size ×0.75. / Precios en COP para tapa blanda. Tapa dura ×1.5, bolsillo ×0.75.</p>
+    <div class="scale-bulk">
+      <div class="scale-bulk-title">Bulk discounts / Descuentos por cantidad</div>
+      <div class="scale-bulk-chips">${bulkTiersHtml()}</div>
+      <p class="scale-foot">Taken off the whole cart, every book included. / Se aplica a todo el carrito, todos los libros incluidos.</p>
+    </div>
   `;
 }
