@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book Sale — Medellín</title>
+  <meta name="description" content="Used books from Jordan's shelves in Medellín, mostly in English. Each one is graded by condition and rarity. Add what you want to the cart and send the list on WhatsApp.">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://jctitan1045.github.io/book-sale/">
+  <meta property="og:title" content="Book Sale — Medellín">
+  <meta property="og:description" content="Used books, mostly in English, graded by condition and rarity. Pick what you want and send the list on WhatsApp.">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <div class="header-row">
+      <h1>Book Sale <span class="h1-sub">Medellín</span></h1>
+      <button class="cart-toggle" id="cartToggle">
+        Cart <span class="cart-count" id="cartCount">0</span>
+      </button>
+    </div>
+    <div class="controls">
+      <input id="search" type="search" placeholder="Search title or author / Buscar título o autor" aria-label="Search">
+      <select id="genreFilter" aria-label="Genre"></select>
+      <select id="sort" aria-label="Sort">
+        <option value="title">Title A–Z</option>
+        <option value="author">Author A–Z</option>
+        <option value="price_asc">Price: low → high</option>
+        <option value="price_desc">Price: high → low</option>
+        <option value="newest">Newest</option>
+      </select>
+    </div>
+  </header>
+
+  <main>
+    <div class="info-panel">
+      <p class="instructions">
+        These are books off my own shelves, mostly in English. Add the ones you want to the cart and hit "Send on WhatsApp". I'll confirm they're still here and we'll set up pickup in Medellín.
+        <br>
+        <em>Son libros de mi biblioteca personal, la mayoría en inglés. Agrega los que quieras al carrito y dale a "Enviar por WhatsApp". Te confirmo que siguen disponibles y cuadramos la entrega en Medellín.</em>
+      </p>
+
+      <div class="pay-methods">
+        <span class="pay-methods-label">Pay by / Paga con:</span>
+        <span class="pay-chip pay-wise">Wise</span>
+        <span class="pay-chip pay-zelle">Zelle</span>
+        <span class="pay-chip pay-venmo">Venmo</span>
+        <span class="pay-chip pay-revolut">Revolut</span>
+        <span class="pay-chip pay-bancolombia">Bancolombia</span>
+        <span class="pay-chip pay-nequi">Nequi</span>
+        <span class="pay-chip pay-cash">Cash / Efectivo</span>
+      </div>
+
+      <details class="how-priced">
+        <summary>How prices work / Cómo se ponen los precios</summary>
+        <p class="instructions">Each book gets a condition grade and a rarity tier. The price comes straight from this table. / Cada libro tiene un estado y un nivel de rareza, y el precio sale de esta tabla.</p>
+        <div id="priceScale"></div>
+      </details>
+    </div>
+
+    <div id="resultCount" class="result-count"></div>
+    <div id="grid"></div>
+  </main>
+
+  <div class="overlay" id="overlay"></div>
+
+  <div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+    <button class="lightbox-close" onclick="closeLightbox(event, true)" aria-label="Close">✕</button>
+    <button class="lightbox-nav prev" onclick="lightboxNav(event, -1)" aria-label="Previous">‹</button>
+    <img id="lightboxImg" src="" alt="">
+    <button class="lightbox-nav next" onclick="lightboxNav(event, 1)" aria-label="Next">›</button>
+    <div class="lightbox-dots" id="lightboxDots"></div>
+  </div>
+
+  <div class="cart-drawer" id="cartDrawer">
+    <button class="secondary" id="cartClose" style="align-self:flex-end;">Close ✕</button>
+    <h2>Your cart / Tu carrito</h2>
+    <div id="cartItems"></div>
+    <div id="cartTotal" class="cart-total"></div>
+    <button id="whatsappBtn" class="whatsapp-btn" disabled>Send on WhatsApp / Enviar por WhatsApp</button>
+    <p class="whatsapp-hint">Opens WhatsApp with your list already typed. Just hit send. / Abre WhatsApp con tu lista ya escrita, solo envíala.</p>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/pricing.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

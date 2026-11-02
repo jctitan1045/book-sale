@@ -1,0 +1,11 @@
+.DS_Store
+worker/.dev.vars
+worker/node_modules/
+.wrangler/
+
+# Private revenue ledger — never publish to the public repo
+SALES.md
+POSTING_WEEK1.md
+PRICES_BACKUP*.json
+POSTING_WEEK1.md
+POSTING_ALL.md

@@ -1,0 +1,68 @@
+// Book pricing scale: price = rarity base × format factor × condition factor, rounded to 5k COP.
+// worker/worker.js carries an identical copy for AI drafts — keep the two in sync.
+const RARITY = {
+  common:      { base: 30000,  en: "Common",      es: "Común",        note: "In print and easy to buy new — bestsellers, popular nonfiction" },
+  uncommon:    { base: 45000,  en: "Uncommon",    es: "Poco común",   note: "Niche or imported, or out of print but easy to find used" },
+  scarce:      { base: 80000,  en: "Scarce",      es: "Escaso",       note: "Out of print and genuinely hard to find; older or limited editions" },
+  collectible: { base: 150000, en: "Collectible", es: "De colección", note: "Signed, true first edition, or special edition — scale is a floor, priced individually" },
+};
+const FORMAT = {
+  paperback:   { factor: 1,    en: "Paperback",   es: "Tapa blanda" },
+  hardcover:   { factor: 1.5,  en: "Hardcover",   es: "Tapa dura" },
+  mass_market: { factor: 0.75, en: "Pocket",      es: "Bolsillo" },
+};
+const CONDITION = {
+  like_new:  { factor: 1,    en: "Like new",  es: "Como nuevo",  note: "No visible wear, looks unread" },
+  very_good: { factor: 0.85, en: "Very good", es: "Muy bueno",   note: "Light shelf wear, clean pages" },
+  good:      { factor: 0.7,  en: "Good",      es: "Bueno",       note: "Read copy — creased spine or soft corners" },
+  fair:      { factor: 0.5,  en: "Fair",      es: "Aceptable",   note: "Heavy wear, highlighting or notes" },
+  poor:      { factor: 0.3,  en: "Poor",      es: "Gastado",     note: "Damaged — reading copy only" },
+};
+const GENRES = {
+  business:     { en: "Business",         es: "Negocios",            icon: "💼" },
+  self_help:    { en: "Self-help",        es: "Desarrollo personal", icon: "🌱" },
+  psychology:   { en: "Psychology",       es: "Psicología",          icon: "🧠" },
+  health:       { en: "Health & fitness", es: "Salud",               icon: "💪" },
+  spirituality: { en: "Spirituality",     es: "Espiritualidad",      icon: "🕊️" },
+  biography:    { en: "Biography",        es: "Biografía",           icon: "👤" },
+  history:      { en: "History",          es: "Historia",            icon: "🏛️" },
+  philosophy:   { en: "Philosophy",       es: "Filosofía",           icon: "🤔" },
+  science:      { en: "Science",          es: "Ciencia",             icon: "🔬" },
+  fiction:      { en: "Fiction",          es: "Ficción",             icon: "📖" },
+  kids:         { en: "Kids & YA",        es: "Infantil y juvenil",  icon: "🧸" },
+  language:     { en: "Language learning", es: "Idiomas",            icon: "🗣️" },
+  other:        { en: "Other",            es: "Otros",               icon: "📚" },
+};
+const LANGUAGES = { english: "English", spanish: "Español", other: "Other" };
+
+function scalePrice(rarity, format, condition) {
+  const base = (RARITY[rarity] || RARITY.common).base;
+  const f = (FORMAT[format] || FORMAT.paperback).factor;
+  const c = (CONDITION[condition] || CONDITION.good).factor;
+  return Math.max(5000, Math.round((base * f * c) / 5000) * 5000);
+}
+
+function fmtK(n) {
+  return n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`;
+}
+
+// Rarity × condition grid for paperbacks, plus the format note. Used on the storefront
+// ("How prices work") and in admin as a reference.
+function priceScaleHtml() {
+  const conds = Object.keys(CONDITION);
+  const head = conds.map((c) => `<th>${CONDITION[c].en}<span class="es">${CONDITION[c].es}</span></th>`).join("");
+  const rows = Object.keys(RARITY).map((r) => `
+    <tr>
+      <th class="row-head">${RARITY[r].en}<span class="es">${RARITY[r].es}</span><span class="note">${RARITY[r].note}</span></th>
+      ${conds.map((c) => `<td>${fmtK(scalePrice(r, "paperback", c))}${r === "collectible" ? "+" : ""}</td>`).join("")}
+    </tr>`).join("");
+  return `
+    <div class="scale-wrap">
+      <table class="scale">
+        <thead><tr><th></th>${head}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <p class="scale-foot">Paperback prices in COP. Hardcover ×1.5, pocket size ×0.75. / Precios en COP para tapa blanda. Tapa dura ×1.5, bolsillo ×0.75.</p>
+  `;
+}

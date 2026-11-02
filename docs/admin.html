@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Book Sale Admin</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="admin-token-gate" id="gate">
+    <h2>Admin access</h2>
+    <p>Enter your admin token to review and publish books.</p>
+    <input id="tokenInput" type="password" placeholder="Admin token" style="width:100%;margin-bottom:0.75rem;">
+    <button id="unlockBtn" style="width:100%;">Unlock</button>
+  </div>
+
+  <div id="adminBody" style="display:none;">
+    <header>
+      <div class="header-row">
+        <h1>Book Sale <span class="h1-sub">Admin</span></h1>
+        <a href="index.html" class="storefront-link">View store ↗</a>
+      </div>
+      <div class="controls">
+        <button class="secondary" id="refreshBtn">Refresh</button>
+        <label class="secondary upload-btn">
+          + Upload photos
+          <input type="file" id="uploadInput" accept="image/*" multiple>
+        </label>
+        <label class="toggle"><input type="checkbox" id="autoPublish"> Auto-publish new books</label>
+        <span class="fx">
+          <label for="fxRate">COP/USD</label>
+          <input id="fxRate" type="number" style="width:6rem;">
+          <button class="secondary" id="saveFxRateBtn">Save</button>
+        </span>
+        <button class="secondary" id="logoutBtn">Log out</button>
+      </div>
+    </header>
+
+    <main>
+      <div id="totals" class="totals-box"></div>
+      <div id="uploadStatus" class="muted-note"></div>
+
+      <details class="how-priced admin-scale">
+        <summary>Pricing scale</summary>
+        <div id="priceScale"></div>
+      </details>
+
+      <div class="admin-section">
+        <h2>Drafts <span id="draftsCount" class="section-count"></span>
+          <button class="secondary small" id="publishAllBtn">Publish all</button>
+        </h2>
+        <div id="drafts"></div>
+      </div>
+
+      <div class="admin-section">
+        <h2>Available <span id="availableCount" class="section-count"></span></h2>
+        <div id="available"></div>
+      </div>
+
+      <div class="admin-section">
+        <h2>Reserved <span id="reservedCount" class="section-count"></span></h2>
+        <div id="reserved"></div>
+      </div>
+
+      <div class="admin-section">
+        <details>
+          <summary class="sold-summary">Sold <span id="soldCount"></span></summary>
+          <div id="sold"></div>
+        </details>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/pricing.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

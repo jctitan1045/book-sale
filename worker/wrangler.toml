@@ -1,0 +1,11 @@
+name = "book-sale-worker"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+kv_namespaces = [
+  { binding = "KV", id = "3d310744eb0545e297c34be7ac10f7a4" }
+]
+
+[vars]
+ALLOWED_ORIGIN = "https://jctitan1045.github.io,http://localhost:4174"
+STOREFRONT_URL = "https://jctitan1045.github.io/book-sale"
