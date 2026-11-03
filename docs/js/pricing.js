@@ -1,10 +1,10 @@
-// Book pricing scale: price = rarity base × format factor × condition factor, rounded to 5k COP.
+// Book pricing scale: price = rarity base × format factor × condition factor, rounded to 1k COP.
 // worker/worker.js carries an identical copy for AI drafts — keep the two in sync.
 const RARITY = {
-  common:      { base: 30000,  en: "Common",      es: "Común",        note: "In print and easy to buy new — bestsellers, popular nonfiction" },
-  uncommon:    { base: 45000,  en: "Uncommon",    es: "Poco común",   note: "Niche or imported, or out of print but easy to find used" },
-  scarce:      { base: 80000,  en: "Scarce",      es: "Escaso",       note: "Out of print and genuinely hard to find; older or limited editions" },
-  collectible: { base: 150000, en: "Collectible", es: "De colección", note: "Signed, true first edition, or special edition — scale is a floor, priced individually" },
+  common:      { base: 25000,  en: "Common",      es: "Común",        note: "In print and easy to buy new — bestsellers, popular nonfiction" },
+  uncommon:    { base: 38000,  en: "Uncommon",    es: "Poco común",   note: "Niche or imported, or out of print but easy to find used" },
+  scarce:      { base: 68000,  en: "Scarce",      es: "Escaso",       note: "Out of print and genuinely hard to find; older or limited editions" },
+  collectible: { base: 125000, en: "Collectible", es: "De colección", note: "Signed, true first edition, or special edition — scale is a floor, priced individually" },
 };
 const FORMAT = {
   paperback:   { factor: 1,    en: "Paperback",   es: "Tapa blanda" },
@@ -39,7 +39,7 @@ function scalePrice(rarity, format, condition) {
   const base = (RARITY[rarity] || RARITY.common).base;
   const f = (FORMAT[format] || FORMAT.paperback).factor;
   const c = (CONDITION[condition] || CONDITION.good).factor;
-  return Math.max(5000, Math.round((base * f * c) / 5000) * 5000);
+  return Math.max(10000, Math.round((base * f * c) / 1000) * 1000);
 }
 
 // Bulk discounts by number of books in the cart (highest tier first). Applies to every

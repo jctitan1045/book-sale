@@ -13,28 +13,32 @@ const RECENT_DRAFT_WINDOW_MS = 15 * 60 * 1000;
 // --- Pricing scale ---
 // Identical copy lives in docs/js/pricing.js (storefront legend + admin price helper).
 // Keep the two in sync.
-const RARITY_BASE_COP = { common: 30000, uncommon: 45000, scarce: 80000, collectible: 150000 };
+// Cut ~15% from the original 30k/45k/80k/150k on 2026-11-03 (Jordan: "at least 10-20% lower").
+const RARITY_BASE_COP = { common: 25000, uncommon: 38000, scarce: 68000, collectible: 125000 };
 const FORMAT_FACTOR = { paperback: 1, hardcover: 1.5, mass_market: 0.75 };
 const CONDITION_FACTOR = { like_new: 1, very_good: 0.85, good: 0.7, fair: 0.5, poor: 0.3 };
 const GENRES = ["business", "self_help", "psychology", "health", "spirituality", "biography", "history", "philosophy", "science", "fiction", "kids", "language", "other"];
 const STATUSES = ["draft", "available", "reserved", "sold"];
 
-function roundTo5k(n) {
-  return Math.max(5000, Math.round(n / 5000) * 5000);
+// Nearest 1,000 COP (5k steps swallowed most of the 15% cut on cheap books), with a
+// 10k floor so nothing lists under ~$3 USD.
+function roundPrice(n) {
+  return Math.max(10000, Math.round(n / 1000) * 1000);
 }
 
 function scalePrice(rarity, format, condition) {
   const base = RARITY_BASE_COP[rarity] || RARITY_BASE_COP.common;
   const f = FORMAT_FACTOR[format] || 1;
   const c = CONDITION_FACTOR[condition] || CONDITION_FACTOR.good;
-  return roundTo5k(base * f * c);
+  return roundPrice(base * f * c);
 }
 
 // Collectible copies are priced individually: the scale gives a floor, the AI's comps
-// estimate can raise it.
+// estimate (discounted by the same ~15% as the scale) can raise it.
 function suggestedPrice(b) {
   const scale = scalePrice(b.rarity, b.format, b.condition);
-  if (b.rarity === "collectible" && b.collectible_estimate_cop > scale) return roundTo5k(b.collectible_estimate_cop);
+  const estimate = roundPrice((b.collectible_estimate_cop || 0) * 0.85);
+  if (b.rarity === "collectible" && estimate > scale) return estimate;
   return scale;
 }
 
@@ -316,7 +320,7 @@ async function draftFromImage({ imageBuffer, contentType, from, caption, notify 
     if (parsed.edition_notes && !referenceListing.edition_notes) referenceListing.edition_notes = parsed.edition_notes;
     await saveListing(referenceListing, env);
     await env.KV.put(`recent_draft:${from}`, JSON.stringify({ listingId: referenceListing.id }), { expirationTtl: Math.ceil(RECENT_DRAFT_WINDOW_MS / 1000) });
-    if (notify) await notify(`📸 Added photo ${referenceListing.image_keys.length} to "${referenceListing.title}"`);
+    if (notify) await notify(`📸 Extra photo added to "${referenceListing.title}"`);
     return referenceListing;
   }
 
@@ -330,17 +334,18 @@ async function draftFromImage({ imageBuffer, contentType, from, caption, notify 
     await env.KV.put(`recent_draft:${from}`, JSON.stringify({ listingId: listing.id }), { expirationTtl: Math.ceil(RECENT_DRAFT_WINDOW_MS / 1000) });
   }
 
+  // One line per photo; flushReplies() bundles a burst into a single WhatsApp message.
   if (notify) {
     if (!parsed && /credit balance/i.test(rawText)) {
-      await notify(`⚠️ The AI account is out of credits, so I couldn't read this book. The photo is saved. Top up at https://console.anthropic.com/settings/billing, then tap "Retry AI" on the draft: ${env.STOREFRONT_URL}/admin.html`);
+      await notify(`⚠️ Out of AI credits, photo saved. Top up at https://console.anthropic.com/settings/billing, then "Retry AI" in admin`);
     } else if (!parsed) {
-      await notify(`⚠️ Got the photo but couldn't read the book. A blank draft is waiting: ${env.STOREFRONT_URL}/admin.html`);
+      await notify(`⚠️ Couldn't read one book, blank draft saved`);
     } else {
-      const by = listing.author ? ` — ${listing.author}` : "";
-      const edition = listing.edition_notes ? `\n✨ ${listing.edition_notes}` : "";
-      const dup = listing.possible_duplicate_of.length ? `\n⚠️ Looks like this one's already listed. Bump the copy count instead?` : "";
-      const state = listing.status === "available" ? "✅ Live on the store" : `Review: ${env.STOREFRONT_URL}/admin.html`;
-      await notify(`📚 ${listing.title}${by}\n${listing.condition.replace("_", " ")} · ${listing.rarity} · ${listing.format.replace("_", " ")} → ${fmtCop(listing.price_cop)}${edition}${dup}\n${state}`);
+      const by = listing.author ? `, ${listing.author}` : "";
+      const edition = listing.edition_notes ? " ✨" : "";
+      const dup = listing.possible_duplicate_of.length ? " (already listed?)" : "";
+      const live = listing.status === "available" ? " ✅" : "";
+      await notify(`📚 ${listing.title}${by} · ${listing.condition.replace("_", " ")} · ${fmtCop(listing.price_cop)}${edition}${dup}${live}`);
     }
   }
 
@@ -356,21 +361,72 @@ async function handleTwilioIntake(request, env, ctx) {
   const { from, body, media } = await request.json();
   if (!Array.isArray(media) || !media.length) return jsonResponse({ error: "no media" }, 400, env);
 
+  // Sequential, so a multi-photo message groups against the draft the previous photo made.
   ctx.waitUntil((async () => {
-    const twilioAuth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
-    const notify = (text) => sendWhatsApp(from, text, env);
-    // Sequential, so a multi-photo message groups against the draft the previous photo made.
-    for (const m of media) {
-      const mediaResp = await fetch(m.url, { headers: { "Authorization": `Basic ${twilioAuth}` } });
-      if (!mediaResp.ok) {
-        await notify(`⚠️ Couldn't download a photo from WhatsApp (status ${mediaResp.status}). Try sending it again.`);
-        continue;
-      }
-      await draftFromImage({ imageBuffer: await mediaResp.arrayBuffer(), contentType: m.contentType || "image/jpeg", from, caption: body, notify }, env);
-    }
+    for (const m of media) await draftFromTwilioMedia({ url: m.url, contentType: m.contentType, from, caption: body }, env);
   })());
 
   return jsonResponse({ ok: true }, 200, env);
+}
+
+async function draftFromTwilioMedia({ url, contentType, from, caption }, env) {
+  const notify = (text) => queueReply(from, text, env);
+  const twilioAuth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
+  const mediaResp = await fetch(url, { headers: { "Authorization": `Basic ${twilioAuth}` } });
+  if (!mediaResp.ok) {
+    await notify(`⚠️ Couldn't download one photo from WhatsApp (status ${mediaResp.status}), please resend it`);
+    return null;
+  }
+  return draftFromImage({ imageBuffer: await mediaResp.arrayBuffer(), contentType: contentType || "image/jpeg", from, caption, notify }, env);
+}
+
+// --- Batched WhatsApp replies ---
+// A reply per photo doubled the traffic between Jordan and the line, and a fast burst
+// tripped Twilio's runaway-loop protection (error 14107), which then dropped his photos.
+// Each reply line is queued as its own KV key (no read-modify-write races between
+// concurrent photos); the cron flushes a sender's queue as ONE message once they've
+// gone quiet for REPLY_QUIET_MS.
+const REPLY_QUIET_MS = 45 * 1000;
+const WHATSAPP_MAX_CHARS = 1500;
+
+async function queueReply(to, text, env) {
+  if (!to) return;
+  await env.KV.put(`reply:${to}:${Date.now()}:${crypto.randomUUID().slice(0, 8)}`, text, { expirationTtl: 24 * 3600 });
+}
+
+async function flushReplies(env) {
+  const { keys } = await env.KV.list({ prefix: "reply:" });
+  const bySender = new Map();
+  for (const k of keys) {
+    // reply:{to}:{ts}:{rand} — `to` contains a colon ("whatsapp:+1..."), so split from the right.
+    const parts = k.name.split(":");
+    const ts = parseInt(parts[parts.length - 2], 10);
+    const to = parts.slice(1, -2).join(":");
+    if (!bySender.has(to)) bySender.set(to, []);
+    bySender.get(to).push({ name: k.name, ts });
+  }
+
+  for (const [to, items] of bySender) {
+    if (Date.now() - Math.max(...items.map((i) => i.ts)) < REPLY_QUIET_MS) continue; // still sending
+    items.sort((a, b) => a.ts - b.ts);
+    const lines = (await Promise.all(items.map((i) => env.KV.get(i.name)))).filter(Boolean);
+
+    const books = lines.filter((l) => l.startsWith("📚")).length;
+    const header = books ? `Got ${books} book${books > 1 ? "s" : ""}:` : "Update:";
+    const footer = `\nReview: ${env.STOREFRONT_URL}/admin.html`;
+    let body = header;
+    let shown = 0;
+    for (const line of lines) {
+      if ((body + "\n" + line + footer).length > WHATSAPP_MAX_CHARS - 30) break;
+      body += "\n" + line;
+      shown++;
+    }
+    if (shown < lines.length) body += `\n…and ${lines.length - shown} more`;
+
+    const result = await sendWhatsApp(to, body + footer, env);
+    // Keep the queue if Twilio refused, so the next run retries; drop it once sent.
+    if (result && result.status < 300) await Promise.all(items.map((i) => env.KV.delete(i.name)));
+  }
 }
 
 // --- Public storefront API ---
@@ -443,10 +499,19 @@ async function handleAddPhoto(id, request, env) {
   return jsonResponse(listing, 200, env);
 }
 
-async function handleDeleteListing(id, env) {
-  const listing = await getListing(id, env);
+// `?images=a,b` names exactly which photos to delete (empty = keep them all, used by Split).
+// The admin client sends it because a KV read right after a write can be stale: looking the
+// listing up here sometimes found nothing and left its photos behind as orphans.
+async function handleDeleteListing(id, request, env) {
+  const param = new URL(request.url).searchParams.get("images");
+  let imageKeys;
+  if (param !== null) imageKeys = param.split(",").filter(Boolean);
+  else {
+    const listing = await getListing(id, env);
+    imageKeys = listing ? imagesOfListing(listing) : [];
+  }
   await env.KV.delete(`listing:${id}`);
-  if (listing) await Promise.all(imagesOfListing(listing).map((imgId) => env.KV.delete(`image:${imgId}`)));
+  await Promise.all(imageKeys.map((imgId) => env.KV.delete(`image:${imgId}`)));
   return jsonResponse({ ok: true }, 200, env);
 }
 
@@ -499,6 +564,11 @@ async function handlePatchConfig(request, env) {
 }
 
 export default {
+  // Every minute (wrangler.toml [triggers]): send any batched WhatsApp replies.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(flushReplies(env));
+  },
+
   async fetch(request, env, ctx) {
     requestOrigin = request.headers.get("Origin") || "";
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(env) });
@@ -515,6 +585,14 @@ export default {
       if (request.method === "GET" && path === "/api/admin/listings") return await handleAdminListings(env);
       if (request.method === "POST" && path === "/api/admin/upload") return await handleAdminUpload(request, env);
       if (request.method === "POST" && path === "/api/admin/split-photo") return await handleSplitPhoto(request, env);
+      // Re-ingest a WhatsApp photo Twilio still holds (e.g. one dropped by error 14107).
+      // Synchronous, so no waitUntil time limit; replies are queued like normal intake.
+      if (request.method === "POST" && path === "/api/admin/import-twilio-media") {
+        const { url, contentType, from, caption } = await request.json();
+        if (!url || !url.startsWith("https://api.twilio.com/")) return jsonResponse({ error: "twilio media url required" }, 400, env);
+        const listing = await draftFromTwilioMedia({ url, contentType, from, caption: caption || "" }, env);
+        return listing ? jsonResponse(listing, 200, env) : jsonResponse({ error: "download failed" }, 502, env);
+      }
       if (request.method === "GET" && path === "/api/admin/config") return jsonResponse(await getConfig(env), 200, env);
       if (request.method === "PATCH" && path === "/api/admin/config") return await handlePatchConfig(request, env);
 
@@ -523,7 +601,7 @@ export default {
         if (request.method === "POST" && rest.endsWith("/photos")) return await handleAddPhoto(rest.replace("/photos", ""), request, env);
         if (request.method === "POST" && rest.endsWith("/redraft")) return await handleRedraftListing(rest.replace("/redraft", ""), request, env);
         if (request.method === "PATCH") return await handlePatchListing(rest, request, env);
-        if (request.method === "DELETE") return await handleDeleteListing(rest, env);
+        if (request.method === "DELETE") return await handleDeleteListing(rest, request, env);
       }
 
       return jsonResponse({ error: "not found" }, 404, env);

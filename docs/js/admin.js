@@ -155,7 +155,7 @@ function editableFields(l) {
     <div class="row">
       <div>
         <label>Price (COP)</label>
-        <input class="f-price" type="number" step="5000" value="${l.price_cop}" oninput="onPriceInput(this)">
+        <input class="f-price" type="number" step="1000" value="${l.price_cop}" oninput="onPriceInput(this)">
         <div class="price-usd-preview">${usdPreview(l.price_cop)}</div>
       </div>
       <div class="scale-hint muted-note">Scale: ${scale.toLocaleString()} COP${l.rarity === "collectible" ? " (floor)" : ""}</div>
@@ -304,7 +304,9 @@ async function publishAll() {
 
 async function deleteListing(id) {
   if (!confirm("Delete this book and its photos permanently?")) return;
-  const resp = await fetch(`${WORKER_BASE_URL}/api/admin/listings/${id}`, { method: "DELETE", headers: authHeaders() });
+  const l = allListings.find((x) => x.id === id);
+  const images = encodeURIComponent((l ? imagesOf(l) : []).join(","));
+  const resp = await fetch(`${WORKER_BASE_URL}/api/admin/listings/${id}?images=${images}`, { method: "DELETE", headers: authHeaders() });
   if (!resp.ok) { handleApiError(resp.status, "delete"); return; }
   allListings = allListings.filter((l) => l.id !== id);
   renderLists();
@@ -423,9 +425,8 @@ async function splitListing(id) {
     }
     replaceLocal(await resp.json());
   }
-  // Detach the shared images first so deleting the original doesn't delete their bytes.
-  await patchListing(id, { image_keys: [] });
-  await fetch(`${WORKER_BASE_URL}/api/admin/listings/${id}`, { method: "DELETE", headers: authHeaders() });
+  // The new drafts now own these photos, so delete only the original record (images= empty).
+  await fetch(`${WORKER_BASE_URL}/api/admin/listings/${id}?images=`, { method: "DELETE", headers: authHeaders() });
   allListings = allListings.filter((x) => x.id !== id);
   renderLists();
 }
