@@ -185,6 +185,7 @@ function cardHtml(l) {
     actions = `
       <button onclick="saveEdits('${l.id}', 'available')">Publish</button>
       <button class="secondary" onclick="saveEdits('${l.id}')">Save</button>
+      ${l.title === "Needs review" ? `<button class="secondary retry-btn" onclick="retryListing('${l.id}')">↻ Retry AI</button>` : ""}
       <button class="secondary redraft-btn" onclick="redraftListing('${l.id}')">✨ Fix with AI</button>
       ${multi ? `<button class="secondary split-btn" onclick="splitListing('${l.id}')">Split (${imagesOf(l).length} photos)</button>` : ""}
       <button class="danger" onclick="deleteListing('${l.id}')">Delete</button>`;
@@ -372,6 +373,37 @@ async function redraftListing(id) {
   flashSaved(id);
 }
 
+// Re-reads a draft whose AI call failed (e.g. out of credits). Returns true on success.
+async function retryListing(id, quiet) {
+  const btn = document.querySelector(`.admin-item[data-id="${id}"] .retry-btn`);
+  if (btn) { btn.disabled = true; btn.textContent = "↻ Reading…"; }
+  const resp = await fetch(`${WORKER_BASE_URL}/api/admin/listings/${id}/redraft`, { method: "POST", headers: authHeaders(), body: JSON.stringify({ note: "" }) });
+  if (!resp.ok) {
+    let detail = "";
+    try { detail = (await resp.json()).error || ""; } catch {}
+    if (!quiet) alert(`Retry failed. ${detail}`.trim());
+    if (btn) { btn.disabled = false; btn.textContent = "↻ Retry AI"; }
+    return detail || "failed";
+  }
+  replaceLocal(await resp.json());
+  flashSaved(id);
+  return true;
+}
+
+async function retryAllFailed() {
+  const failed = allListings.filter((l) => l.title === "Needs review");
+  const btn = document.getElementById("retryAllBtn");
+  for (let i = 0; i < failed.length; i++) {
+    btn.textContent = `Retrying ${i + 1}/${failed.length}…`;
+    const ok = await retryListing(failed[i].id, true);
+    if (ok !== true) {
+      alert(`Stopped at ${i + 1} of ${failed.length}. ${ok}`);
+      break;
+    }
+  }
+  renderLists();
+}
+
 async function splitListing(id) {
   const l = allListings.find((x) => x.id === id);
   const imgs = l ? imagesOf(l) : [];
@@ -436,6 +468,10 @@ function renderLists() {
   renderSection("reserved", "reservedCount", reserved, "Nothing on hold.");
   renderSection("sold", "soldCount", sold, "Nothing sold yet.");
   document.getElementById("publishAllBtn").style.display = drafts.length ? "" : "none";
+  const failedCount = drafts.filter((l) => l.title === "Needs review").length;
+  const retryBtn = document.getElementById("retryAllBtn");
+  retryBtn.style.display = failedCount ? "" : "none";
+  retryBtn.textContent = `↻ Retry ${failedCount} failed`;
 
   const sum = (arr, f) => arr.reduce((s, l) => s + (f(l) || 0), 0);
   const liveCop = sum(available.concat(reserved), (l) => l.price_cop * invOf(l));
@@ -461,6 +497,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("refreshBtn").addEventListener("click", loadAll);
   document.getElementById("logoutBtn").addEventListener("click", () => forceRelogin("Logged out."));
   document.getElementById("publishAllBtn").addEventListener("click", publishAll);
+  document.getElementById("retryAllBtn").addEventListener("click", retryAllFailed);
   document.getElementById("uploadInput").addEventListener("change", (e) => uploadPhotos(e.target.files));
   document.getElementById("fxRate").addEventListener("input", renderLists);
   document.getElementById("saveFxRateBtn").addEventListener("click", async () => {

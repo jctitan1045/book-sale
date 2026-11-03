@@ -331,7 +331,9 @@ async function draftFromImage({ imageBuffer, contentType, from, caption, notify 
   }
 
   if (notify) {
-    if (!parsed) {
+    if (!parsed && /credit balance/i.test(rawText)) {
+      await notify(`⚠️ The AI account is out of credits, so I couldn't read this book. The photo is saved. Top up at https://console.anthropic.com/settings/billing, then tap "Retry AI" on the draft: ${env.STOREFRONT_URL}/admin.html`);
+    } else if (!parsed) {
       await notify(`⚠️ Got the photo but couldn't read the book. A blank draft is waiting: ${env.STOREFRONT_URL}/admin.html`);
     } else {
       const by = listing.author ? ` — ${listing.author}` : "";
@@ -469,15 +471,18 @@ async function handleSplitPhoto(request, env) {
 async function handleRedraftListing(id, request, env) {
   const listing = await getListing(id, env);
   if (!listing) return jsonResponse({ error: "not found" }, 404, env);
-  const { note } = await request.json();
-  if (!note || !note.trim()) return jsonResponse({ error: "note required" }, 400, env);
+  // An empty note is a plain retry (e.g. a draft that failed because the AI call errored).
+  const { note = "" } = await request.json();
 
   const imgKey = imagesOfListing(listing)[0];
   const img = imgKey ? await env.KV.getWithMetadata(`image:${imgKey}`, { type: "arrayBuffer" }) : null;
   if (!img || !img.value) return jsonResponse({ error: "listing has no photo to re-analyze" }, 400, env);
 
   const { parsed, rawText } = await analyzePhoto({ base64Image: arrayBufferToBase64(img.value), contentType: img.metadata?.contentType || "image/jpeg", caption: "", reference: null, correction: note.trim() }, env);
-  if (!parsed || !parsed.title) return jsonResponse({ error: "AI could not re-draft this book", detail: rawText.slice(0, 200) }, 502, env);
+  if (!parsed || !parsed.title) {
+    const error = /credit balance/i.test(rawText) ? "The AI account is out of credits. Top up at console.anthropic.com, then retry." : "AI could not re-draft this book";
+    return jsonResponse({ error, detail: rawText.slice(0, 200) }, 502, env);
+  }
 
   const { fx_rate } = await getConfig(env);
   const updated = { ...listing, ...aiFields(parsed, fx_rate) };
