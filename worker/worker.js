@@ -267,7 +267,11 @@ function tokens(s) {
 // Same author + strongly overlapping title among unsold listings = probably the same book
 // sent twice, or a second copy (in which case Jordan bumps inventory instead).
 async function findPossibleDuplicates(listing, env, allListings) {
-  const all = allListings || await listListings(env);
+  let all = allListings;
+  if (!all) {
+    // A nice-to-have check must never lose a photo if the KV list quota is exhausted.
+    try { all = await listListings(env); } catch { return []; }
+  }
   const mine = new Set(tokens(listing.title));
   if (!mine.size) return [];
   const author = tokens(listing.author).join(" ");
@@ -392,10 +396,22 @@ const WHATSAPP_MAX_CHARS = 1500;
 async function queueReply(to, text, env) {
   if (!to) return;
   await env.KV.put(`reply:${to}:${Date.now()}:${crypto.randomUUID().slice(0, 8)}`, text, { expirationTtl: 24 * 3600 });
+  await env.KV.put("reply_due", String(Date.now()), { expirationTtl: 24 * 3600 });
 }
 
+// The cron fires 1,440 times a day, and KV's free tier allows only 1,000 list() calls a day
+// across the whole Cloudflare account. So it checks one flag key (reads are cheap) and only
+// lists when replies are actually waiting. Listing every minute took down this store and
+// moving-sale on 2026-11-03.
 async function flushReplies(env) {
+  const due = await env.KV.get("reply_due");
+  if (!due || Date.now() - parseInt(due, 10) < REPLY_QUIET_MS) return;
+
   const { keys } = await env.KV.list({ prefix: "reply:" });
+  if (!keys.length) {
+    await env.KV.delete("reply_due");
+    return;
+  }
   const bySender = new Map();
   for (const k of keys) {
     // reply:{to}:{ts}:{rand} — `to` contains a colon ("whatsapp:+1..."), so split from the right.
@@ -427,16 +443,35 @@ async function flushReplies(env) {
     // Keep the queue if Twilio refused, so the next run retries; drop it once sent.
     if (result && result.status < 300) await Promise.all(items.map((i) => env.KV.delete(i.name)));
   }
+
+  // Clear the flag unless a new photo arrived while this ran.
+  if ((await env.KV.get("reply_due")) === due) await env.KV.delete("reply_due");
 }
 
 // --- Public storefront API ---
 
+// Every store page load used to cost one KV list() (free tier: 1,000/day, account-wide) plus
+// one read per book. Serve a snapshot instead, rebuilt at most every 5 minutes, and keep
+// serving the last good one if the rebuild fails, so a quota hit can't take the store down.
+const STORE_SNAPSHOT_MAX_AGE_MS = 5 * 60 * 1000;
+
 async function handleGetListings(env) {
-  const listings = await listListings(env);
+  const raw = await env.KV.get("cache:store_snapshot");
+  const snapshot = raw ? JSON.parse(raw) : null;
+  if (snapshot && Date.now() - snapshot.at < STORE_SNAPSHOT_MAX_AGE_MS) return jsonResponse(snapshot.books, 200, env);
+
+  let listings;
+  try {
+    listings = await listListings(env);
+  } catch (err) {
+    if (snapshot) return jsonResponse(snapshot.books, 200, env);
+    throw err;
+  }
   // Only what a buyer needs; source_phone and AI reasoning stay admin-side.
   const visible = listings
     .filter((l) => l.status === "available" || l.status === "reserved")
     .map(({ source_phone, rarity_reason, collectible_estimate_cop, possible_duplicate_of, price_suggested_cop, ...pub }) => pub);
+  await env.KV.put("cache:store_snapshot", JSON.stringify({ at: Date.now(), books: visible }));
   return jsonResponse(visible, 200, env);
 }
 
