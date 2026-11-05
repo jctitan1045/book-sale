@@ -20,10 +20,9 @@ const CONDITION_FACTOR = { like_new: 1, very_good: 0.85, good: 0.7, fair: 0.5, p
 const GENRES = ["business", "self_help", "psychology", "health", "spirituality", "biography", "history", "philosophy", "science", "fiction", "kids", "language", "other"];
 const STATUSES = ["draft", "available", "reserved", "sold"];
 
-// Nearest 1,000 COP (5k steps swallowed most of the 15% cut on cheap books), with a
-// 10k floor so nothing lists under ~$3 USD.
+// Round numbers only (Jordan, 2026-11-04): nearest 10,000 COP, minimum 10,000.
 function roundPrice(n) {
-  return Math.max(10000, Math.round(n / 1000) * 1000);
+  return Math.max(10000, Math.round(n / 10000) * 10000);
 }
 
 function scalePrice(rarity, format, condition) {

@@ -155,7 +155,7 @@ function editableFields(l) {
     <div class="row">
       <div>
         <label>Price (COP)</label>
-        <input class="f-price" type="number" step="1000" value="${l.price_cop}" oninput="onPriceInput(this)">
+        <input class="f-price" type="number" step="10000" value="${l.price_cop}" oninput="onPriceInput(this)">
         <div class="price-usd-preview">${usdPreview(l.price_cop)}</div>
       </div>
       <div class="scale-hint muted-note">Scale: ${scale.toLocaleString()} COP${l.rarity === "collectible" ? " (floor)" : ""}</div>

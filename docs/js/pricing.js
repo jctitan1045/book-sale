@@ -1,4 +1,4 @@
-// Book pricing scale: price = rarity base × format factor × condition factor, rounded to 1k COP.
+// Book pricing scale: price = rarity base × format factor × condition factor, rounded to 10k COP (minimum 10k).
 // worker/worker.js carries an identical copy for AI drafts — keep the two in sync.
 const RARITY = {
   common:      { base: 25000,  en: "Common",      es: "Común",        note: "In print and easy to buy new — bestsellers, popular nonfiction" },
@@ -39,7 +39,7 @@ function scalePrice(rarity, format, condition) {
   const base = (RARITY[rarity] || RARITY.common).base;
   const f = (FORMAT[format] || FORMAT.paperback).factor;
   const c = (CONDITION[condition] || CONDITION.good).factor;
-  return Math.max(10000, Math.round((base * f * c) / 1000) * 1000);
+  return Math.max(10000, Math.round((base * f * c) / 10000) * 10000);
 }
 
 // Bulk discounts by number of books in the cart (highest tier first). Applies to every

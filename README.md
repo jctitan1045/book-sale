@@ -25,14 +25,14 @@ You can also upload photos from the laptop with **+ Upload photos** in admin.
 
 ## Pricing scale
 
-`price = rarity base × format × condition`, rounded to 1,000 COP, minimum 10,000 COP (~$3). Lowered ~15% on 2026-11-03 so most books land at $3–10 USD. The AI picks the grades, the worker does the math. In admin, changing any grade moves the price to the scale; you can still type any price.
+`price = rarity base × format × condition`, rounded to the nearest 10,000 COP (round numbers only), minimum 10,000 COP (~$3). Most books land at $3–10 USD. The AI picks the grades, the worker does the math. In admin, changing any grade moves the price to the scale; you can still type any price.
 
 | Rarity (paperback) | Like new | Very good | Good | Fair | Poor |
 |---|---|---|---|---|---|
-| Common: in print, easy to buy new | 25k | 21k | 18k | 13k | 10k |
-| Uncommon: niche/imported, or OOP but cheap used | 38k | 32k | 27k | 19k | 11k |
-| Scarce: OOP and hard to find, older/limited editions | 68k | 58k | 48k | 34k | 20k |
-| Collectible: signed, true first edition, special edition | 125k+ | 106k+ | 88k+ | 63k+ | 38k+ |
+| Common: in print, easy to buy new | 30k | 20k | 20k | 10k | 10k |
+| Uncommon: niche/imported, or OOP but cheap used | 40k | 30k | 30k | 20k | 10k |
+| Scarce: OOP and hard to find, older/limited editions | 70k | 60k | 50k | 30k | 20k |
+| Collectible: signed, true first edition, special edition | 130k+ | 110k+ | 90k+ | 60k+ | 40k+ |
 
 Hardcover ×1.5, pocket/mass-market ×0.75. Collectible is a floor: the AI also estimates from comps (discounted 15% like the scale) and the higher number wins. Each admin card has a "Check AbeBooks" link for checking rarity before publishing.
 
